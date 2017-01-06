@@ -13,3 +13,11 @@
 *.a
 
 *~
+
+hashmap
+
+*.json
+
+aum
+
+*.plist
