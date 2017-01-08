@@ -199,38 +199,50 @@ uint64_t hash_function_caca(const char *key) {
 	return output;
 }
 
-int hash_map_robin_hood_back_shift_llena_distancia_a_indice_inicio(
+static inline int hash_map_robin_hood_back_shift_llena_distancia_a_indice_inicio(
 		hm_rr_bs_tabla *ht, uint64_t index_stored, uint64_t *distance) {
-	if (ht->buckets_[index_stored].entry == NULL)
+	hm_cubeta cubeta = ht->buckets_[index_stored];
+
+	*distance = 0;
+
+	if (cubeta.entry == NULL)
 		return -1;
-	uint64_t index_init = ht->buckets_[index_stored].hash % ht->num_buckets_;
+
+	uint64_t num_cubetas = ht->num_buckets_;
+
+	uint64_t index_init = cubeta.hash % num_cubetas;
 	if (index_init <= index_stored) {
 		*distance = index_stored - index_init;
 	} else {
-		*distance = index_stored + (ht->num_buckets_ - index_init);
+		*distance = index_stored + (num_cubetas - index_init);
 	}
 	return 0;
 }
 
 int hash_map_robin_hood_back_shift_obten(hm_rr_bs_tabla *ht, const char* key,
 		char **value) {
+	uint64_t num_cubetas = ht->num_buckets_;
+	uint64_t prob_max = ht->probing_max_;
+	int tam_key = strlen(key);
+
 	uint64_t hash = hash_function_caca(key);
-	uint64_t index_init = hash % ht->num_buckets_;
+	uint64_t index_init = hash % num_cubetas;
 	uint64_t probe_distance = 0;
 	bool found = false;
 	uint32_t i;
-	for (i = 0; i < ht->probing_max_; i++) {
-		uint64_t index_current = (index_init + i) % ht->num_buckets_;
+	for (i = 0; i < prob_max; i++) {
+		uint64_t index_current = (index_init + i) % num_cubetas;
+		hm_entry *entrada = ht->buckets_[index_current].entry;
+
 		hash_map_robin_hood_back_shift_llena_distancia_a_indice_inicio(ht,
 				index_current, &probe_distance);
-		if (ht->buckets_[index_current].entry == NULL || i > probe_distance) {
+		if (entrada == NULL || i > probe_distance) {
 			break;
 		}
 
-		if (strlen(key) == ht->buckets_[index_current].entry->size_key
-				&& memcmp(ht->buckets_[index_current].entry->data, key,
-						strlen(key)) == 0) {
-			*value = ht->buckets_[index_current].entry->data + strlen(key);
+		if (tam_key == entrada->size_key
+				&& memcmp(entrada->data, key, tam_key) == 0) {
+			*value = entrada->data + tam_key;
 			found = true;
 			break;
 		}
@@ -244,45 +256,54 @@ int hash_map_robin_hood_back_shift_obten(hm_rr_bs_tabla *ht, const char* key,
 
 int hash_map_robin_hood_back_shift_pon(hm_rr_bs_tabla *ht, const char *key,
 		const char *value) {
-	if (ht->num_buckets_used_ == ht->num_buckets_) {
+
+	uint64_t num_cubetas = ht->num_buckets_;
+	uint64_t prob_max = ht->probing_max_;
+	int tam_key = strlen(key);
+	int tam_value = strlen(value);
+	hm_cubeta *cubetas = ht->buckets_;
+
+	if (ht->num_buckets_used_ == num_cubetas) {
 		return 1;
 	}
 	ht->num_buckets_used_ += 1;
 
 	uint64_t hash = hash_function_caca(key);
-	uint64_t index_init = hash % ht->num_buckets_;
+	uint64_t index_init = hash % num_cubetas;
 
-	char *data = (char *) calloc(strlen(key) + strlen(value) + 2, sizeof(char));
-	memcpy(data, key, strlen(key));
-	memcpy(data + strlen(key), value, strlen(value));
+	char *data = (char *) calloc(tam_key + tam_value + 2, sizeof(char));
+	memcpy(data, key, tam_key);
+	memcpy(data + tam_key, value, tam_value);
 
 	hm_entry *entry = (hm_entry *) calloc(1, sizeof(hm_entry));
-	entry->size_key = strlen(key);
-	entry->size_value = strlen(value);
+	entry->size_key = tam_key;
+	entry->size_value = tam_value;
 	entry->data = data;
 
 	uint64_t index_current = index_init;
-	uint64_t probe_distance = 0;
 	uint64_t probe_current = 0;
-	hm_entry *entry_temp = NULL;
-	uint64_t hash_temp = 0;
+	uint64_t probe_distance;
+	hm_entry *entry_temp;
+	uint64_t hash_temp;
 	uint64_t i;
 
-	for (i = 0; i < ht->probing_max_; i++) {
-		index_current = (index_init + i) % ht->num_buckets_;
-		if (ht->buckets_[index_current].entry == NULL) {
-			ht->buckets_[index_current].entry = entry;
-			ht->buckets_[index_current].hash = hash;
+	for (i = 0; i < prob_max; i++) {
+		index_current = (index_init + i) % num_cubetas;
+		hm_cubeta *cubeta = cubetas + index_current;
+
+		if (cubeta->entry == NULL) {
+			cubeta->entry = entry;
+			cubeta->hash = hash;
 			break;
 		} else {
 			hash_map_robin_hood_back_shift_llena_distancia_a_indice_inicio(ht,
 					index_current, &probe_distance);
 			if (probe_current > probe_distance) {
 				// Swapping the current bucket with the one to insert
-				entry_temp = ht->buckets_[index_current].entry;
-				hash_temp = ht->buckets_[index_current].hash;
-				ht->buckets_[index_current].entry = entry;
-				ht->buckets_[index_current].hash = hash;
+				entry_temp = cubeta->entry;
+				hash_temp = cubeta->hash;
+				cubeta->entry = entry;
+				cubeta->hash = hash;
 				entry = entry_temp;
 				hash = hash_temp;
 				probe_current = probe_distance;
