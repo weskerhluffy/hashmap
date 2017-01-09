@@ -24,9 +24,8 @@
 #include "shadow_hashmap.h"
 
 typedef struct hash_map_entry {
-	uint32_t size_key;
-	uint32_t size_value;
-	long *data;
+	long llave;
+	long valor;
 } hm_entry;
 
 typedef struct hash_map_cubeta {
@@ -223,7 +222,6 @@ int hash_map_robin_hood_back_shift_obten(hm_rr_bs_tabla *ht, const long key,
 		long *value) {
 	uint64_t num_cubetas = ht->num_buckets_;
 	uint64_t prob_max = ht->probing_max_;
-	int tam_key = sizeof(key);
 
 //	uint64_t hash = hash_function_caca(key);
 	uint64_t hash = key % num_cubetas;
@@ -241,8 +239,8 @@ int hash_map_robin_hood_back_shift_obten(hm_rr_bs_tabla *ht, const long key,
 			break;
 		}
 
-		if (entrada->data[0] == key) {
-			*value = entrada->data[1];
+		if (entrada->llave == key) {
+			*value = entrada->valor;
 			found = true;
 			break;
 		}
@@ -259,8 +257,6 @@ int hash_map_robin_hood_back_shift_pon(hm_rr_bs_tabla *ht, long key,
 
 	uint64_t num_cubetas = ht->num_buckets_;
 	uint64_t prob_max = ht->probing_max_;
-	int tam_key = sizeof(key);
-	int tam_value = sizeof(key);
 	hm_cubeta *cubetas = ht->buckets_;
 
 	if (ht->num_buckets_used_ == num_cubetas) {
@@ -272,14 +268,9 @@ int hash_map_robin_hood_back_shift_pon(hm_rr_bs_tabla *ht, long key,
 	uint64_t hash = key % num_cubetas;
 	uint64_t index_init = hash;
 
-	long *data = (long *) calloc(2, sizeof(long));
-	data[0] = key;
-	data[1] = value;
-
 	hm_entry *entry = (hm_entry *) calloc(1, sizeof(hm_entry));
-	entry->size_key = tam_key;
-	entry->size_value = tam_value;
-	entry->data = data;
+	entry->llave = key;
+	entry->valor = value;
 
 	uint64_t index_current = index_init;
 	uint64_t probe_current = 0;
@@ -319,7 +310,6 @@ int hash_map_robin_hood_back_shift_pon(hm_rr_bs_tabla *ht, long key,
 int hash_map_robin_hood_back_shift_borra(hm_rr_bs_tabla *ht, const long key) {
 	uint64_t num_cubetas = ht->num_buckets_;
 	uint64_t prob_max = ht->probing_max_;
-	int tam_key = sizeof(key);
 
 	uint64_t hash = key % num_cubetas;
 	uint64_t index_init = hash;
@@ -338,15 +328,13 @@ int hash_map_robin_hood_back_shift_borra(hm_rr_bs_tabla *ht, const long key) {
 			break;
 		}
 
-		if (entrada->data[0] == key) {
+		if (entrada->llave == key) {
 			found = true;
 			break;
 		}
 	}
 
 	if (found) {
-		free(entrada->data);
-		entrada->data = NULL;
 		free(entrada);
 
 		uint64_t i = 1;
@@ -402,8 +390,8 @@ void solo_rencor() {
 
 int main(int argc, char **argv) {
 	bool has_error = false;
-	int num_items = 67860441 / 10;
-	int muestre = 1000000;
+	int num_items = 67860441 / 100;
+	int muestre = 100000;
 
 	long value_out = 0;
 
@@ -429,7 +417,7 @@ int main(int argc, char **argv) {
 
 	hm_rr_bs_tabla *ht = (hm_rr_bs_tabla*) calloc(1, sizeof(hm_rr_bs_tabla));
 
-	hash_map_robin_hood_back_shift_init(ht, num_items << 3);
+	hash_map_robin_hood_back_shift_init(ht, num_items << 2);
 
 	for (int i = 0; i < num_items; i++) {
 		value_out = 0;
