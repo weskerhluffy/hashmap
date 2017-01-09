@@ -316,42 +316,51 @@ int hash_map_robin_hood_back_shift_pon(hm_rr_bs_tabla *ht, const char *key,
 }
 
 int hash_map_robin_hood_back_shift_borra(hm_rr_bs_tabla *ht, const char *key) {
+	uint64_t num_cubetas = ht->num_buckets_;
+	uint64_t prob_max = ht->probing_max_;
+	int tam_key = strlen(key);
+
 	uint64_t hash = hash_function_caca(key);
-	uint64_t index_init = hash % ht->num_buckets_;
+	uint64_t index_init = hash % num_cubetas;
 	bool found = false;
 	uint64_t index_current = 0;
 	uint64_t probe_distance = 0;
+	hm_entry *entrada = NULL;
 
-	for (uint64_t i = 0; i < ht->num_buckets_; i++) {
-		index_current = (index_init + i) % ht->num_buckets_;
+	for (uint64_t i = 0; i < num_cubetas; i++) {
+		index_current = (index_init + i) % num_cubetas;
+		entrada = ht->buckets_[index_current].entry;
+
 		hash_map_robin_hood_back_shift_llena_distancia_a_indice_inicio(ht,
 				index_current, &probe_distance);
-		if (ht->buckets_[index_current].entry == NULL || i > probe_distance) {
+		if (entrada == NULL || i > probe_distance) {
 			break;
 		}
 
-		if (strlen(key) == ht->buckets_[index_current].entry->size_key
-				&& memcmp(ht->buckets_[index_current].entry->data, key,
-						strlen(key)) == 0) {
+		if (tam_key == entrada->size_key
+				&& memcmp(entrada->data, key, tam_key) == 0) {
 			found = true;
 			break;
 		}
 	}
 
 	if (found) {
-		free(ht->buckets_[index_current].entry->data);
-		ht->buckets_[index_current].entry->data = NULL;
-		free(ht->buckets_[index_current].entry);
-		ht->buckets_[index_current].entry = NULL;
+		free(entrada->data);
+		entrada->data = NULL;
+		free(entrada);
 
 		uint64_t i = 1;
 		uint64_t index_previous = 0, index_swap = 0;
 
-		for (i = 1; i < ht->num_buckets_; i++) {
-			index_previous = (index_current + i - 1) % ht->num_buckets_;
-			index_swap = (index_current + i) % ht->num_buckets_;
-			if (ht->buckets_[index_swap].entry == NULL) {
-				ht->buckets_[index_previous].entry = NULL;
+		for (i = 1; i < num_cubetas; i++) {
+			index_previous = (index_current + i - 1) % num_cubetas;
+			index_swap = (index_current + i) % num_cubetas;
+
+			hm_cubeta *cubeta_swap = ht->buckets_ + index_swap;
+			hm_cubeta *cubeta_previous = ht->buckets_ + index_previous;
+
+			if (cubeta_swap->entry == NULL) {
+				cubeta_previous->entry = NULL;
 				break;
 			}
 			uint64_t distance;
@@ -360,11 +369,11 @@ int hash_map_robin_hood_back_shift_borra(hm_rr_bs_tabla *ht, const char *key) {
 				fprintf(stderr, "Error in FillDistanceToInitIndex()");
 			}
 			if (!distance) {
-				ht->buckets_[index_previous].entry = NULL;
+				cubeta_previous->entry = NULL;
 				break;
 			}
-			ht->buckets_[index_previous].entry = ht->buckets_[index_swap].entry;
-			ht->buckets_[index_previous].hash = ht->buckets_[index_swap].hash;
+			cubeta_previous->entry = cubeta_swap->entry;
+			cubeta_previous->hash = cubeta_swap->hash;
 		}
 		return 0;
 	}
@@ -421,7 +430,7 @@ int main(int argc, char **argv) {
 
 	hm_rr_bs_tabla *ht = (hm_rr_bs_tabla*) calloc(1, sizeof(hm_rr_bs_tabla));
 
-	hash_map_robin_hood_back_shift_init(ht, num_items << 2);
+	hash_map_robin_hood_back_shift_init(ht, num_items << 3);
 
 	for (int i = 0; i < num_items; i++) {
 		value_out_1 = NULL;
