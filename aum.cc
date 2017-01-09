@@ -23,6 +23,297 @@
 #include "bitmap_hashmap.h"
 #include "shadow_hashmap.h"
 
+typedef int tipo_dato;
+typedef unsigned int natural;
+typedef long long entero_largo;
+typedef unsigned long long bitch_vector;
+
+#define assert_timeout(condition) assert(condition);
+
+#if 1
+
+typedef unsigned int khint32_t;
+
+typedef unsigned long long khint64_t;
+typedef khint32_t khint_t;
+typedef khint_t khiter_t;
+static const double __ac_HASH_UPPER = 0.77;
+static inline khint_t __ac_X31_hash_string(const char *s) {
+	khint_t h = (khint_t) *s;
+	if (h)
+		for (++s; *s; ++s)
+			h = (h << 5) - h + (khint_t) *s;
+	return h;
+}
+static inline khint_t __ac_Wang_hash(khint_t key) {
+	key += ~(key << 15);
+	key ^= (key >> 10);
+	key += (key << 3);
+	key ^= (key >> 6);
+	key += ~(key << 11);
+	key ^= (key >> 16);
+	return key;
+}
+typedef const char *kh_cstr_t;
+typedef struct kh_caca_s {
+	khint_t n_buckets, size, n_occupied, upper_bound;
+	khint32_t *flags;
+	khint64_t *keys;
+	long long *vals;
+	natural tam_inicial;
+} kh_caca_t;
+
+#define kh_key(h, x) ((h)->keys[x])
+#define kh_val(h, x) ((h)->vals[x])
+#define kh_value(h, x) ((h)->vals[x])
+#define kh_begin(h) (khint_t)(0)
+#define kh_end(h) ((h)->n_buckets)
+#define kh_size(h) ((h)->size)
+#define kh_exist(h, x) (!__ac_iseither((h)->flags, (x)))
+
+#define __ac_isempty(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&2)
+#define __ac_isdel(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&1)
+#define __ac_iseither(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&3)
+#define __ac_set_isdel_false(flag, i) (flag[i>>4]&=~(1ul<<((i&0xfU)<<1)))
+#define __ac_set_isempty_false(flag, i) (flag[i>>4]&=~(2ul<<((i&0xfU)<<1)))
+#define __ac_set_isboth_false(flag, i) (flag[i>>4]&=~(3ul<<((i&0xfU)<<1)))
+#define __ac_set_isdel_true(flag, i) (flag[i>>4]|=1ul<<((i&0xfU)<<1))
+#define __ac_fsize(m) ((m) < 16? 1 : (m)>>4)
+
+static inline __attribute__ ((__unused__)) int kh_resize_caca(kh_caca_t *h,
+		khint_t new_n_buckets);
+
+static inline __attribute__ ((__unused__)) kh_caca_t *kh_init_caca(
+		natural tam_inicial) {
+	natural tam_inicial_redondeado = 0;
+	natural max_profundidad = 0;
+	kh_caca_t *mierda = (kh_caca_t*) calloc(1, sizeof(kh_caca_t));
+	assert_timeout(mierda);
+	while ((tam_inicial >> max_profundidad)) {
+		max_profundidad++;
+	}
+	tam_inicial_redondeado = (1 << max_profundidad);
+	mierda->tam_inicial = tam_inicial_redondeado << 1;
+	assert_timeout(kh_resize_caca(mierda, mierda->n_buckets + 1) >= 0);
+
+	return mierda;
+}
+static inline __attribute__ ((__unused__)) void kh_destroy_caca(kh_caca_t *h) {
+	if (h) {
+		free((void *) h->keys);
+		free(h->flags);
+		free((void *) h->vals);
+		free(h);
+	}
+}
+
+static inline __attribute__ ((__unused__)) khint_t kh_get_caca(
+		const kh_caca_t *h, khint64_t key) {
+	khint_t k, i, last, mask, step = 0;
+	mask = h->n_buckets - 1;
+	k = (khint32_t) ((key) >> 33 ^ (key) ^ (key) << 11);
+	i = k & mask;
+	last = i;
+	khint32_t bandera_caca;
+	khint32_t *flags = h->flags;
+	khint64_t *keys = h->keys;
+	while (!((bandera_caca = (flags[i >> 4] >> ((i & 0xfU) << 1))) & 2)
+			&& ((bandera_caca & 1) || !((keys[i]) == (key)))) {
+		i = (i + (++step)) & mask;
+		if (i == last)
+			return h->n_buckets;
+	}
+	return ((flags[i >> 4] >> ((i & 0xfU) << 1)) & 3) ? h->n_buckets : i;
+}
+
+static inline __attribute__ ((__unused__)) int kh_resize_caca(kh_caca_t *h,
+		khint_t new_n_buckets) {
+	khint32_t *new_flags = 0;
+	khint_t j = 1;
+	{
+		(--(new_n_buckets), (new_n_buckets) |= (new_n_buckets) >> 1, (new_n_buckets) |=
+				(new_n_buckets) >> 2, (new_n_buckets) |= (new_n_buckets) >> 4, (new_n_buckets) |=
+				(new_n_buckets) >> 8, (new_n_buckets) |= (new_n_buckets) >> 16, ++(new_n_buckets));
+		if (new_n_buckets < 4)
+			new_n_buckets = 4;
+		if (h->size >= (khint_t) (new_n_buckets * __ac_HASH_UPPER + 0.5))
+			j = 0;
+		else {
+			new_flags = (khint32_t*) malloc(
+					((new_n_buckets) < 16 ? 1 : (new_n_buckets) >> 4)
+							* sizeof(khint32_t));
+			if (!new_flags)
+				return -1;
+			__builtin___memset_chk(new_flags, 0xaa,
+					((new_n_buckets) < 16 ? 1 : (new_n_buckets) >> 4)
+							* sizeof(khint32_t),
+					__builtin_object_size(new_flags, 0));
+			if (h->n_buckets < new_n_buckets) {
+				khint64_t *new_keys = (khint64_t*) realloc((void *) h->keys,
+						new_n_buckets * sizeof(khint64_t));
+				if (!new_keys) {
+					free(new_flags);
+					return -1;
+				}
+				h->keys = new_keys;
+				if (1) {
+					long long *new_vals = (long long*) realloc((void *) h->vals,
+							new_n_buckets * sizeof(long long));
+					if (!new_vals) {
+						free(new_flags);
+						return -1;
+					}
+					h->vals = new_vals;
+				}
+			}
+		}
+	}
+	if (j) {
+		for (j = 0; j != h->n_buckets; ++j) {
+			if (((h->flags[j >> 4] >> ((j & 0xfU) << 1)) & 3) == 0) {
+				khint64_t key = h->keys[j];
+				long long val;
+				khint_t new_mask;
+				new_mask = new_n_buckets - 1;
+				if (1)
+					val = h->vals[j];
+				(h->flags[j >> 4] |= 1ul << ((j & 0xfU) << 1));
+				while (1) {
+					khint_t k, i, step = 0;
+					k = (khint32_t) ((key) >> 33 ^ (key) ^ (key) << 11);
+					i = k & new_mask;
+					while (!((new_flags[i >> 4] >> ((i & 0xfU) << 1)) & 2))
+						i = (i + (++step)) & new_mask;
+					(new_flags[i >> 4] &= ~(2ul << ((i & 0xfU) << 1)));
+					if (i < h->n_buckets
+							&& ((h->flags[i >> 4] >> ((i & 0xfU) << 1)) & 3)
+									== 0) {
+						{
+							khint64_t tmp = h->keys[i];
+							h->keys[i] = key;
+							key = tmp;
+						}
+						if (1) {
+							long long tmp = h->vals[i];
+							h->vals[i] = val;
+							val = tmp;
+						}
+						(h->flags[i >> 4] |= 1ul << ((i & 0xfU) << 1));
+					} else {
+						h->keys[i] = key;
+						if (1)
+							h->vals[i] = val;
+						break;
+					}
+				}
+			}
+		}
+		if (h->n_buckets > new_n_buckets) {
+			h->keys = (khint64_t*) realloc((void *) h->keys,
+					new_n_buckets * sizeof(khint64_t));
+			if (1)
+				h->vals = (long long*) realloc((void *) h->vals,
+						new_n_buckets * sizeof(long long));
+		}
+		free(h->flags);
+		h->flags = new_flags;
+		h->n_buckets = new_n_buckets;
+		h->n_occupied = h->size;
+		h->upper_bound = (khint_t) (h->n_buckets * __ac_HASH_UPPER + 0.5);
+	}
+	return 0;
+}
+
+/*! @function
+ @abstract     Insert a key to the hash table.
+ @param  name  Name of the hash table [symbol]
+ @param  h     Pointer to the hash table [khash_t(name)*]
+ @param  k     Key [type of keys]
+ @param  r     Extra return code: -1 if the operation failed;
+ 0 if the key is present in the hash table;
+ 1 if the bucket is empty (never used); 2 if the element in
+ the bucket has been deleted [int*]
+ @return       Iterator to the inserted element [khint_t]
+ */
+static inline __attribute__ ((__unused__)) khint_t kh_put_caca(kh_caca_t *h,
+		khint64_t key, int *ret) {
+	khint_t x;
+	if (h->n_occupied >= h->upper_bound) {
+		if (kh_resize_caca(h, h->n_buckets + 1) < 0) {
+			*ret = -1;
+			return h->n_buckets;
+		}
+	}
+	khint_t k, i, site, last, mask = h->n_buckets - 1, step = 0;
+	x = site = h->n_buckets;
+	k = (khint32_t) ((key) >> 33 ^ (key) ^ (key) << 11);
+	i = k & mask;
+	khint32_t *flags = h->flags;
+	khint64_t *keys = h->keys;
+	khint32_t banderilla_loca = (flags[i >> 4] >> ((i & 0xfU) << 1));
+	if ((banderilla_loca & 2))
+		x = i;
+	else {
+		last = i;
+		while (!((banderilla_loca = flags[i >> 4] >> ((i & 0xfU) << 1)) & 2)
+				&& ((banderilla_loca & 1) || !((keys[i]) == (key)))) {
+			if ((banderilla_loca & 1))
+				site = i;
+			i = (i + (++step)) & mask;
+			if (i == last) {
+				x = site;
+				break;
+			}
+		}
+		if (x == h->n_buckets) {
+			if ((banderilla_loca & 2) && site != h->n_buckets)
+				x = site;
+			else
+				x = i;
+		}
+	}
+
+	banderilla_loca = (flags[x >> 4] >> ((x & 0xfU) << 1));
+	if ((banderilla_loca & 2)) {
+		keys[x] = key;
+		(flags[x >> 4] &= ~(3ul << ((x & 0xfU) << 1)));
+		++h->size;
+		++h->n_occupied;
+		*ret = 1;
+	} else if ((banderilla_loca & 1)) {
+		keys[x] = key;
+		(flags[x >> 4] &= ~(3ul << ((x & 0xfU) << 1)));
+		++h->size;
+		*ret = 2;
+	} else
+		*ret = 0;
+	return x;
+}
+static inline __attribute__ ((__unused__)) void kh_del_caca(kh_caca_t *h,
+		khint_t x) {
+	if (x != h->n_buckets && !((h->flags[x >> 4] >> ((x & 0xfU) << 1)) & 3)) {
+		(h->flags[x >> 4] |= 1ul << ((x & 0xfU) << 1));
+		--h->size;
+	}
+}
+
+char *kh_shit_dumpear(kh_caca_t *h, char *buf) {
+	*buf = '\0';
+#ifndef ONLINE_JUDGE
+	for (int k = kh_begin(h); k != kh_end(h); ++k) {
+		if (kh_exist(h, k)) {
+			char *buf_tmp = (char[1000] ) { 0 };
+			sprintf(buf_tmp, "%u -> %u\n", (natural) kh_key(h,k),
+			(natural)(kh_val(h,k)));
+			strcat(buf, buf_tmp);
+		}
+	}
+#endif
+	return buf;
+}
+
+#endif
+
 typedef struct hash_map_entry {
 	long llave;
 	long valor;
@@ -390,8 +681,9 @@ void solo_rencor() {
 
 int main(int argc, char **argv) {
 	bool has_error = false;
-	int num_items = 67860441 / 100;
-	int muestre = 100000;
+	int factor_redux = 100;
+	int num_items = 67860441 / factor_redux;
+	int muestre = 10000000 / factor_redux;
 
 	long value_out = 0;
 
@@ -419,6 +711,8 @@ int main(int argc, char **argv) {
 
 	hash_map_robin_hood_back_shift_init(ht, num_items << 2);
 
+	kh_caca_t *mierda = kh_init_caca(num_items << 2);
+
 	for (int i = 0; i < num_items; i++) {
 		value_out = 0;
 		long key = i;
@@ -442,6 +736,27 @@ int main(int argc, char **argv) {
 	assert(!num_items_reached);
 	if (!num_items_reached) {
 		num_items_reached = num_items;
+	}
+
+	solo_rencor();
+
+	for (int i = 0; i < num_items; i++) {
+		value_out = 0;
+		long key = i;
+		long value = i;
+		khiter_t iter;
+
+		int ret_put = 0;
+		iter = kh_put_caca(mierda, key, &ret_put);
+		kh_val(mierda,iter)=value;
+		if (!(i % muestre)) {
+			printf("caca c ant %d\n", i);
+		}
+
+		hash_map_robin_hood_back_shift_obten(ht, key, &value_out);
+		iter = kh_get_caca(mierda, key);
+		value_out = kh_val(mierda,iter);
+		assert(value == value_out);
 	}
 
 	solo_rencor();
@@ -480,6 +795,28 @@ int main(int argc, char **argv) {
 
 	solo_rencor();
 
+	for (int i = 0; i < num_items_reached; i++) {
+		value_out = 0;
+		long key = i;
+		long value = i;
+		khiter_t iter;
+
+		int ret_get;
+		iter = kh_get_caca(mierda, key);
+		if (!(i % muestre)) {
+			printf("caca obten nomas c ant %d\n", i);
+		}
+		value_out = kh_val(mierda,iter);
+		if (ret_get != 0 || value != value_out) {
+			std::cout << "Final check: error at step [" << i << "]"
+					<< std::endl;
+			has_error = true;
+			break;
+		}
+	}
+
+	solo_rencor();
+
 	if (!has_error) {
 		std::cout << "Final check: OK" << std::endl;
 	}
@@ -506,6 +843,17 @@ int main(int argc, char **argv) {
 			printf("caca borra c %d\n", i);
 		}
 		assert(hash_map_robin_hood_back_shift_obten(ht, key, &value_out));
+	}
+
+	solo_rencor();
+
+	for (int i = 0; i < num_items_reached; i++) {
+		long key = i;
+		kh_del_caca(mierda, key);
+		if (!(i % muestre)) {
+			printf("caca borra c ant %d\n", i);
+		}
+//		assert(hash_map_robin_hood_back_shift_obten(ht, key, &value_out));
 	}
 
 	solo_rencor();
