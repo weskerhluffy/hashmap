@@ -689,23 +689,7 @@ int main(int argc, char **argv) {
 
 	int num_items_reached = 0;
 
-	std::unordered_map<long, long> caca;
 
-	solo_rencor();
-
-	for (int i = 0; i < num_items; i++) {
-		value_out = 0;
-		long key = i;
-		long value = i;
-		caca[key] = value;
-		if (!(i % muestre)) {
-			printf("caca %d\n", i);
-		}
-		value_out = caca[key];
-		assert(value == value_out);
-	}
-
-	solo_rencor();
 
 	hm_rr_bs_tabla *ht = (hm_rr_bs_tabla*) calloc(1, sizeof(hm_rr_bs_tabla));
 
@@ -761,20 +745,6 @@ int main(int argc, char **argv) {
 
 	solo_rencor();
 
-	for (int i = 0; i < num_items_reached; i++) {
-		value_out = 0;
-		long key = i;
-		long value = i;
-
-		value_out = caca[key];
-		if (!(i % muestre)) {
-			printf("caca obten nomas %d\n", i);
-		}
-		assert(value == value_out);
-	}
-
-	solo_rencor();
-
 	has_error = false;
 	for (int i = 0; i < num_items_reached; i++) {
 		value_out = 0;
@@ -819,18 +789,6 @@ int main(int argc, char **argv) {
 
 	if (!has_error) {
 		std::cout << "Final check: OK" << std::endl;
-	}
-
-	has_error = false;
-
-	for (int i = 0; i < num_items_reached; i++) {
-		long key = i;
-
-		caca.erase(key);
-		if (!(i % muestre)) {
-			printf("caca borra %d\n", i);
-		}
-		assert(caca.find(key) == caca.end());
 	}
 
 	solo_rencor();
