@@ -26,7 +26,7 @@
 typedef struct hash_map_entry {
 	uint32_t size_key;
 	uint32_t size_value;
-	char *data;
+	long *data;
 } hm_entry;
 
 typedef struct hash_map_cubeta {
@@ -219,14 +219,15 @@ static inline int hash_map_robin_hood_back_shift_llena_distancia_a_indice_inicio
 	return 0;
 }
 
-int hash_map_robin_hood_back_shift_obten(hm_rr_bs_tabla *ht, const char* key,
-		char **value) {
+int hash_map_robin_hood_back_shift_obten(hm_rr_bs_tabla *ht, const long key,
+		long *value) {
 	uint64_t num_cubetas = ht->num_buckets_;
 	uint64_t prob_max = ht->probing_max_;
-	int tam_key = strlen(key);
+	int tam_key = sizeof(key);
 
-	uint64_t hash = hash_function_caca(key);
-	uint64_t index_init = hash % num_cubetas;
+//	uint64_t hash = hash_function_caca(key);
+	uint64_t hash = key % num_cubetas;
+	uint64_t index_init = hash;
 	uint64_t probe_distance = 0;
 	bool found = false;
 	uint32_t i;
@@ -240,9 +241,8 @@ int hash_map_robin_hood_back_shift_obten(hm_rr_bs_tabla *ht, const char* key,
 			break;
 		}
 
-		if (tam_key == entrada->size_key
-				&& memcmp(entrada->data, key, tam_key) == 0) {
-			*value = entrada->data + tam_key;
+		if (entrada->data[0] == key) {
+			*value = entrada->data[1];
 			found = true;
 			break;
 		}
@@ -254,13 +254,13 @@ int hash_map_robin_hood_back_shift_obten(hm_rr_bs_tabla *ht, const char* key,
 	return 1;
 }
 
-int hash_map_robin_hood_back_shift_pon(hm_rr_bs_tabla *ht, const char *key,
-		const char *value) {
+int hash_map_robin_hood_back_shift_pon(hm_rr_bs_tabla *ht, long key,
+		long value) {
 
 	uint64_t num_cubetas = ht->num_buckets_;
 	uint64_t prob_max = ht->probing_max_;
-	int tam_key = strlen(key);
-	int tam_value = strlen(value);
+	int tam_key = sizeof(key);
+	int tam_value = sizeof(key);
 	hm_cubeta *cubetas = ht->buckets_;
 
 	if (ht->num_buckets_used_ == num_cubetas) {
@@ -268,12 +268,13 @@ int hash_map_robin_hood_back_shift_pon(hm_rr_bs_tabla *ht, const char *key,
 	}
 	ht->num_buckets_used_ += 1;
 
-	uint64_t hash = hash_function_caca(key);
-	uint64_t index_init = hash % num_cubetas;
+//	uint64_t hash = hash_function_caca(key);
+	uint64_t hash = key % num_cubetas;
+	uint64_t index_init = hash;
 
-	char *data = (char *) calloc(tam_key + tam_value + 2, sizeof(char));
-	memcpy(data, key, tam_key);
-	memcpy(data + tam_key, value, tam_value);
+	long *data = (long *) calloc(2, sizeof(long));
+	data[0] = key;
+	data[1] = value;
 
 	hm_entry *entry = (hm_entry *) calloc(1, sizeof(hm_entry));
 	entry->size_key = tam_key;
@@ -315,13 +316,13 @@ int hash_map_robin_hood_back_shift_pon(hm_rr_bs_tabla *ht, const char *key,
 	return 0;
 }
 
-int hash_map_robin_hood_back_shift_borra(hm_rr_bs_tabla *ht, const char *key) {
+int hash_map_robin_hood_back_shift_borra(hm_rr_bs_tabla *ht, const long key) {
 	uint64_t num_cubetas = ht->num_buckets_;
 	uint64_t prob_max = ht->probing_max_;
-	int tam_key = strlen(key);
+	int tam_key = sizeof(key);
 
-	uint64_t hash = hash_function_caca(key);
-	uint64_t index_init = hash % num_cubetas;
+	uint64_t hash = key % num_cubetas;
+	uint64_t index_init = hash;
 	bool found = false;
 	uint64_t index_current = 0;
 	uint64_t probe_distance = 0;
@@ -337,8 +338,7 @@ int hash_map_robin_hood_back_shift_borra(hm_rr_bs_tabla *ht, const char *key) {
 			break;
 		}
 
-		if (tam_key == entrada->size_key
-				&& memcmp(entrada->data, key, tam_key) == 0) {
+		if (entrada->data[0] == key) {
 			found = true;
 			break;
 		}
@@ -402,28 +402,27 @@ void solo_rencor() {
 
 int main(int argc, char **argv) {
 	bool has_error = false;
-	int num_items = 67860441 / 100;
-	int muestre = 100000;
+	int num_items = 67860441 / 10;
+	int muestre = 1000000;
 
-	std::string value_out("value_out");
-	char *value_out_1 = NULL;
+	long value_out = 0;
 
 	int num_items_reached = 0;
 
-	std::unordered_map<std::string, std::string> caca;
+	std::unordered_map<long, long> caca;
 
 	solo_rencor();
 
 	for (int i = 0; i < num_items; i++) {
-		value_out = "value_out";
-		std::string key = concatenate("key", i);
-		std::string value = concatenate("value", i);
+		value_out = 0;
+		long key = i;
+		long value = i;
 		caca[key] = value;
 		if (!(i % muestre)) {
 			printf("caca %d\n", i);
 		}
 		value_out = caca[key];
-		assert(!strcmp(value.c_str(), value_out.c_str()));
+		assert(value == value_out);
 	}
 
 	solo_rencor();
@@ -433,17 +432,16 @@ int main(int argc, char **argv) {
 	hash_map_robin_hood_back_shift_init(ht, num_items << 3);
 
 	for (int i = 0; i < num_items; i++) {
-		value_out_1 = NULL;
-		std::string key = concatenate("key", i);
-		std::string value = concatenate("value", i);
+		value_out = 0;
+		long key = i;
+		long value = i;
 
-		int ret_put = hash_map_robin_hood_back_shift_pon(ht, key.c_str(),
-				value.c_str());
+		int ret_put = hash_map_robin_hood_back_shift_pon(ht, key, value);
 		if (!(i % muestre)) {
 			printf("caca c %d\n", i);
 		}
 
-		hash_map_robin_hood_back_shift_obten(ht, key.c_str(), &value_out_1);
+		hash_map_robin_hood_back_shift_obten(ht, key, &value_out);
 		if (ret_put != 0) {
 			std::cout << "Insertion stopped due to clustering at step: " << i
 					<< std::endl;
@@ -451,61 +449,40 @@ int main(int argc, char **argv) {
 			num_items_reached = i;
 			break;
 		}
-		assert(!strcmp(value.c_str(), value_out_1));
-
+		assert(value == value_out);
 	}
 	assert(!num_items_reached);
 	if (!num_items_reached) {
 		num_items_reached = num_items;
 	}
 
-	/*
-	 for (int i = 0; i < num_items; i++) {
-	 value_out = "value_out";
-	 std::string key = concatenate("key", i);
-	 std::string value = concatenate("value", i);
-	 int ret_put = hm->Put(key, value);
-	 if (!(i % 1000000)) {
-	 printf("caca %d\n", i);
-	 }
-	 hm->Get(key, &value_out);
-
-	 if (ret_put != 0) {
-	 std::cout << "Insertion stopped due to clustering at step: " << i
-	 << std::endl;
-	 std::cout << "Load factor: " << (double) i / num_items << std::endl;
-	 num_items_reached = i;
-	 break;
-	 }
-	 }
-	 */
-
 	solo_rencor();
 
 	for (int i = 0; i < num_items_reached; i++) {
-		value_out = "value_out";
-		std::string key = concatenate("key", i);
-		std::string value = concatenate("value", i);
+		value_out = 0;
+		long key = i;
+		long value = i;
+
 		value_out = caca[key];
 		if (!(i % muestre)) {
 			printf("caca obten nomas %d\n", i);
 		}
-		assert(!strcmp(value.c_str(), value_out.c_str()));
+		assert(value == value_out);
 	}
 
 	solo_rencor();
 
 	has_error = false;
 	for (int i = 0; i < num_items_reached; i++) {
-		value_out_1 = NULL;
-		std::string key = concatenate("key", i);
-		std::string value = concatenate("value", i);
-		int ret_get = hash_map_robin_hood_back_shift_obten(ht, key.c_str(),
-				&value_out_1);
+		value_out = 0;
+		long key = i;
+		long value = i;
+
+		int ret_get = hash_map_robin_hood_back_shift_obten(ht, key, &value_out);
 		if (!(i % muestre)) {
 			printf("caca obten nomas c %d\n", i);
 		}
-		if (ret_get != 0 || strcmp(value.c_str(), value_out_1)) {
+		if (ret_get != 0 || value != value_out) {
 			std::cout << "Final check: error at step [" << i << "]"
 					<< std::endl;
 			has_error = true;
@@ -514,20 +491,7 @@ int main(int argc, char **argv) {
 	}
 
 	solo_rencor();
-	/*
-	 for (int i = 0; i < num_items_reached; i++) {
-	 value_out = "value_out";
-	 std::string key = concatenate("key", i);
-	 std::string value = concatenate("value", i);
-	 int ret_get = hm->Get(key, &value_out);
-	 if (ret_get != 0 || value != value_out) {
-	 std::cout << "Final check: error at step [" << i << "]"
-	 << std::endl;
-	 has_error = true;
-	 break;
-	 }
-	 }
-	 */
+
 	if (!has_error) {
 		std::cout << "Final check: OK" << std::endl;
 	}
@@ -535,8 +499,8 @@ int main(int argc, char **argv) {
 	has_error = false;
 
 	for (int i = 0; i < num_items_reached; i++) {
-		std::string key = concatenate("key", i);
-		std::string value = concatenate("value", i);
+		long key = i;
+
 		caca.erase(key);
 		if (!(i % muestre)) {
 			printf("caca borra %d\n", i);
@@ -548,35 +512,16 @@ int main(int argc, char **argv) {
 	has_error = false;
 
 	for (int i = 0; i < num_items_reached; i++) {
-		std::string key = concatenate("key", i);
-		hash_map_robin_hood_back_shift_borra(ht, key.c_str());
+		long key = i;
+		hash_map_robin_hood_back_shift_borra(ht, key);
 		if (!(i % muestre)) {
 			printf("caca borra c %d\n", i);
 		}
-		assert(
-				hash_map_robin_hood_back_shift_obten(ht, key.c_str(),
-						&value_out_1));
+		assert(hash_map_robin_hood_back_shift_obten(ht, key, &value_out));
 	}
+
 	solo_rencor();
-	/*
-	 for (int i = 0; i < num_items_reached; i++) {
-	 std::string key = concatenate("key", i);
-	 std::string value = concatenate("value", i);
-	 int ret_remove = hm->Remove(key);
-	 if (ret_remove != 0) {
-	 std::cout << "Remove: error at step [" << i << "]" << std::endl;
-	 has_error = true;
-	 break;
-	 }
-	 int ret_get = hm->Get(key, &value_out);
-	 if (ret_get == 0) {
-	 std::cout << "Remove: error at step [" << i
-	 << "] -- can get after remove" << std::endl;
-	 has_error = true;
-	 break;
-	 }
-	 }
-	 */
+
 	if (!has_error) {
 		std::cout << "Removing items: OK" << std::endl;
 	}
