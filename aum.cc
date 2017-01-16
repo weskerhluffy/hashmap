@@ -328,7 +328,7 @@ typedef struct hash_map_robin_hood_back_shift {
 	hm_cubeta *buckets_;
 	uint64_t num_buckets_;
 	uint64_t num_buckets_used_;
-
+	uint64_t probing_min_;
 	uint64_t probing_max_;
 } hm_rr_bs_tabla;
 
@@ -340,7 +340,8 @@ int hash_map_robin_hood_back_shift_init(hm_rr_bs_tabla *ht, int num_cubetas) {
 	 static_cast<HashMap*>(this));
 	 */
 	ht->num_buckets_used_ = 0;
-	ht->probing_max_ = num_cubetas;
+	ht->probing_max_ = 0;
+	ht->probing_min_ = num_cubetas;
 	return 0;
 }
 
@@ -520,7 +521,7 @@ int hash_map_robin_hood_back_shift_obten(hm_rr_bs_tabla *ht, const long key,
 	uint64_t probe_distance = 0;
 	bool found = false;
 	uint32_t i;
-	for (i = 0; i < prob_max; i++) {
+	for (i = 0; i < num_cubetas; i++) {
 		uint64_t index_current = (index_init + i) % num_cubetas;
 		hm_entry *entrada = ht->buckets_[index_current].entry;
 
@@ -548,6 +549,7 @@ int hash_map_robin_hood_back_shift_pon(hm_rr_bs_tabla *ht, long key,
 
 	uint64_t num_cubetas = ht->num_buckets_;
 	uint64_t prob_max = ht->probing_max_;
+	uint64_t prob_min = ht->probing_min_;
 	hm_cubeta *cubetas = ht->buckets_;
 
 	if (ht->num_buckets_used_ == num_cubetas) {
@@ -570,13 +572,19 @@ int hash_map_robin_hood_back_shift_pon(hm_rr_bs_tabla *ht, long key,
 	uint64_t hash_temp;
 	uint64_t i;
 
-	for (i = 0; i < prob_max; i++) {
+	for (i = 0; i < num_cubetas; i++) {
 		index_current = (index_init + i) % num_cubetas;
 		hm_cubeta *cubeta = cubetas + index_current;
 
 		if (cubeta->entry == NULL) {
 			cubeta->entry = entry;
 			cubeta->hash = hash;
+			if (index_current > prob_max) {
+				ht->probing_max_ = index_current;
+			}
+			if (index_current < prob_min) {
+				ht->probing_min_ = index_current;
+			}
 			break;
 		} else {
 			hash_map_robin_hood_back_shift_llena_distancia_a_indice_inicio(ht,
@@ -601,6 +609,7 @@ int hash_map_robin_hood_back_shift_pon(hm_rr_bs_tabla *ht, long key,
 int hash_map_robin_hood_back_shift_borra(hm_rr_bs_tabla *ht, const long key) {
 	uint64_t num_cubetas = ht->num_buckets_;
 	uint64_t prob_max = ht->probing_max_;
+	uint64_t prob_min = ht->probing_max_;
 
 	uint64_t hash = key % num_cubetas;
 	uint64_t index_init = hash;
@@ -654,10 +663,68 @@ int hash_map_robin_hood_back_shift_borra(hm_rr_bs_tabla *ht, const long key) {
 			cubeta_previous->entry = cubeta_swap->entry;
 			cubeta_previous->hash = cubeta_swap->hash;
 		}
+		if (i < num_cubetas) {
+			if (index_previous == prob_min) {
+				prob_min++;
+				if (prob_min >= num_cubetas) {
+					prob_min = 0;
+				} else {
+					while (prob_min < num_cubetas
+							&& ht->buckets_[prob_min].entry) {
+						prob_min++;
+					}
+					if (prob_min >= num_cubetas) {
+						prob_min = num_cubetas;
+					}
+				}
+
+				ht->probing_min_ = prob_min;
+			}
+
+			if (index_previous == prob_max) {
+				prob_max--;
+				if (prob_max >= num_cubetas) {
+					prob_max = num_cubetas;
+				} else {
+					while (((int64_t) prob_max) >= 0
+							&& ht->buckets_[prob_max].entry) {
+						prob_max--;
+					}
+					if (prob_max >= num_cubetas) {
+						prob_max = 0;
+					}
+				}
+
+				ht->probing_max_ = prob_max;
+			}
+
+		}
 		return 0;
 	}
 
 	return 1;
+}
+
+static inline int hash_map_robin_hood_back_shift_indice_inicio(
+		hm_rr_bs_tabla *ht) {
+	return ht->probing_min_;
+}
+
+static inline int hash_map_robin_hood_back_shift_indice_final(
+		hm_rr_bs_tabla *ht) {
+	return ht->probing_max_;
+}
+
+static inline bool hash_map_robin_hood_back_shift_indice_existe(
+		hm_rr_bs_tabla *ht, int indice) {
+	return !!ht->buckets_[indice].entry;
+}
+
+static inline bool hash_map_robin_hood_back_shift_indice_obten_llave(
+		hm_rr_bs_tabla *ht, int indice) {
+	hm_entry *entrada = ht->buckets_[indice].entry;
+	assert_timeout(entrada);
+	return entrada->llave;
 }
 
 std::string concatenate(std::string const& str, int i) {
@@ -688,8 +755,6 @@ int main(int argc, char **argv) {
 	long value_out = 0;
 
 	int num_items_reached = 0;
-
-
 
 	hm_rr_bs_tabla *ht = (hm_rr_bs_tabla*) calloc(1, sizeof(hm_rr_bs_tabla));
 
@@ -722,6 +787,22 @@ int main(int argc, char **argv) {
 		num_items_reached = num_items;
 	}
 
+	int num_elems = 0;
+	for (int i = hash_map_robin_hood_back_shift_indice_inicio(ht);
+			i <= hash_map_robin_hood_back_shift_indice_final(ht); i++) {
+		if (hash_map_robin_hood_back_shift_indice_existe(ht, i)) {
+			if (!(num_elems % muestre)) {
+				printf("caca iter c %d\n", num_elems);
+			}
+			long llave = hash_map_robin_hood_back_shift_indice_obten_llave(ht,
+					i);
+			long valor = 0;
+			assert(!hash_map_robin_hood_back_shift_obten(ht, llave, &valor));
+			num_elems++;
+		}
+	}
+	assert(num_elems == num_items);
+
 	solo_rencor();
 
 	for (int i = 0; i < num_items; i++) {
@@ -737,7 +818,6 @@ int main(int argc, char **argv) {
 			printf("caca c ant %d\n", i);
 		}
 
-		hash_map_robin_hood_back_shift_obten(ht, key, &value_out);
 		iter = kh_get_caca(mierda, key);
 		value_out = kh_val(mierda,iter);
 		assert(value == value_out);
